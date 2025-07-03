@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Manutenção de Impressoras v10 - Gestão de Peças</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .modal-backdrop { background-color: rgba(0,0,0,0.5); z-index: 50; }
+        .modal-content { max-height: 90vh; }
+        .progress-bar { background-color: #e9ecef; border-radius: .375rem; display: flex; overflow: hidden; }
+        .progress-bar-inner { height: 100%; border-radius: .375rem; color: white; font-size: 0.75rem; font-weight: bold; text-align: center; transition: width .6s ease; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Cabeçalho -->
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fas fa-print text-3xl text-blue-600 mr-3"></i>
+                <h1 class="text-2xl font-bold text-gray-800">Controle de Manutenção</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="clearDataBtn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300 flex items-center" title="Limpar todos os dados salvos">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <button id="addPrinterBtn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Nova Impressora
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container mx-auto p-6">
+
+        <!-- Seção de Dashboard -->
+        <section id="dashboard-section">
+            <h2 class="text-3xl font-bold mb-4 text-gray-900">Dashboard</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center"><i class="fas fa-heart-pulse text-red-500 mr-3"></i>Vida Útil das Peças Instaladas</h3>
+                    <div id="lifespan-dashboard" class="space-y-4 max-h-96 overflow-y-auto pr-2"></div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center"><i class="fas fa-clipboard-list text-yellow-500 mr-3"></i>Lista para Manutenção Preventiva</h3>
+                    <div id="preventive-dashboard" class="space-y-3 max-h-96 overflow-y-auto pr-2"></div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="my-8 border-gray-300">
+        
+        <!-- Seção de Impressoras -->
+        <section id="printers-section">
+            <h2 class="text-2xl font-bold mb-4">Impressoras Cadastradas</h2>
+            <div id="printersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+        </section>
+
+        <hr class="my-8 border-gray-300">
+
+        <!-- Seção de Ordens de Serviço -->
+        <section id="maintenance-section">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Ordens de Serviço</h2>
+                <button id="addMaintenanceBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300 flex items-center disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-wrench mr-2"></i> Nova Manutenção
+                </button>
+            </div>
+            <div class="bg-white rounded-lg shadow overflow-x-auto">
+                <table class="min-w-full"><thead class="bg-gray-50"><tr><th class="p-3 text-left text-xs font-medium text-gray-500 uppercase">Impressora</th><th class="p-3 text-left text-xs font-medium text-gray-500 uppercase">Problema</th><th class="p-3 text-left text-xs font-medium text-gray-500 uppercase">Técnico</th><th class="p-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th><th class="p-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th></tr></thead><tbody id="maintenanceTableBody"></tbody></table>
+            </div>
+        </section>
+
+        <hr class="my-8 border-gray-300">
+
+        <!-- Seção de Estoque de Peças -->
+        <section id="inventory-section">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Controle de Estoque de Peças</h2>
+                <button id="addPartBtn" class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-300 flex items-center">
+                    <i class="fas fa-box mr-2"></i> Nova Peça
+                </button>
+            </div>
+            <div class="bg-white rounded-lg shadow overflow-x-auto">
+                <table class="min-w-full"><thead class="bg-gray-50"><tr><th class="p-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th><th class="p-3 text-right text-xs font-medium text-gray-500 uppercase">Custo</th><th class="p-3 text-center text-xs font-medium text-gray-500 uppercase">Qtd. Estoque</th><th class="p-3 text-center text-xs font-medium text-gray-500 uppercase">Vida Útil (Páginas)</th><th class="p-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th></tr></thead><tbody id="partsTableBody"></tbody></table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modais -->
+    <!-- Modal Impressora -->
+    <div id="printerModal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md m-4 modal-content overflow-y-auto">
+            <h3 id="printerModalTitle" class="text-xl font-bold mb-6">Cadastrar Nova Impressora</h3>
+            <form id="printerForm">
+                <input type="hidden" id="printerId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="printerBrand" class="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+                        <input type="text" id="printerBrand" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="printerModel" class="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                        <input type="text" id="printerModel" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="printerSerial" class="block text-sm font-medium text-gray-700 mb-1">Nº de Série</label>
+                        <input type="text" id="printerSerial" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="printerPageCount" class="block text-sm font-medium text-gray-700 mb-1">Contador de Páginas</label>
+                        <input type="number" id="printerPageCount" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="printerLocation" class="block text-sm font-medium text-gray-700 mb-1">Localização</label>
+                    <input type="text" id="printerLocation" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" class="btn-cancel bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Peça -->
+    <div id="partModal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-lg m-4 modal-content overflow-y-auto">
+            <h3 id="partModalTitle" class="text-xl font-bold mb-6">Cadastrar Nova Peça</h3>
+            <form id="partForm">
+                <input type="hidden" id="partId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="partCode" class="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                        <input type="text" id="partCode" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="partDescription" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                        <input type="text" id="partDescription" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="partCost" class="block text-sm font-medium text-gray-700 mb-1">Custo (R$)</label>
+                        <input type="number" id="partCost" step="0.01" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="partQuantity" class="block text-sm font-medium text-gray-700 mb-1">Qtd. em Estoque</label>
+                        <input type="number" id="partQuantity" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="partLifespanPages" class="block text-sm font-medium text-gray-700 mb-1">Vida Útil (em Páginas)</label>
+                    <input type="number" id="partLifespanPages" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ex: 3000" required>
+                </div>
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" class="btn-cancel bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700">Salvar Peça</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Atualizar Contador -->
+    <div id="updatePageCountModal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-sm m-4">
+            <h3 class="text-xl font-bold mb-4">Atualizar Contador</h3>
+            <form id="updatePageCountForm">
+                <input type="hidden" id="updatePageCountPrinterId">
+                <p id="updatePageCountInfo" class="text-gray-600 mb-4"></p>
+                <div>
+                    <label for="newPageCount" class="block text-sm font-medium text-gray-700 mb-1">Novo valor do contador</label>
+                    <input type="number" id="newPageCount" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" class="btn-cancel bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">Atualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Gerenciar Peças Instaladas -->
+    <div id="managePartsModal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-xl m-4 modal-content flex flex-col">
+            <h3 class="text-xl font-bold mb-2">Gerenciar Peças Instaladas</h3>
+            <p id="managePartsPrinterName" class="text-gray-600 mb-6"></p>
+            
+            <div class="flex-grow overflow-y-auto pr-2">
+                <h4 class="font-bold mb-4">Peças Atualmente Instaladas</h4>
+                <div id="currentManagedParts" class="space-y-3 mb-6">
+                    <!-- Lista de peças instaladas será inserida aqui -->
+                </div>
+
+                <hr class="my-6">
+
+                <h4 class="font-bold mb-4">Adicionar Peça em Uso</h4>
+                <form id="manualInstallForm">
+                    <input type="hidden" id="manualInstallPrinterId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="manualInstallPart" class="block text-sm font-medium text-gray-700 mb-1">Peça do Estoque</label>
+                            <select id="manualInstallPart" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required></select>
+                        </div>
+                        <div>
+                            <label for="manualInstallPageCount" class="block text-sm font-medium text-gray-700 mb-1">Contador na Instalação</label>
+                            <input type="number" id="manualInstallPageCount" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                        </div>
+                    </div>
+                    <div class="text-right mt-4">
+                        <button type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700">Adicionar Peça</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="flex justify-end space-x-4 mt-6 pt-4 border-t">
+                <button type="button" class="btn-cancel bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Outros modais (Manutenção, Detalhes, etc.) -->
+    <div id="maintenanceModal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md m-4 modal-content">
+            <h3 class="text-xl font-bold mb-6">Registrar Nova Manutenção</h3>
+            <form id="maintenanceForm">
+                <div class="mb-4">
+                    <label for="maintenancePrinter" class="block text-sm font-medium text-gray-700 mb-1">Impressora</label>
+                    <select id="maintenancePrinter" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required></select>
+                </div>
+                <div class="mb-4">
+                    <label for="maintenanceProblem" class="block text-sm font-medium text-gray-700 mb-1">Descrição do Problema</label>
+                    <textarea id="maintenanceProblem" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required></textarea>
+                </div>
+                <div class="mb-6">
+                    <label for="maintenanceTechnician" class="block text-sm font-medium text-gray-700 mb-1">Técnico</label>
+                    <input type="text" id="maintenanceTechnician" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" class="btn-cancel bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="detailsModal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl m-4 modal-content flex flex-col">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-bold" id="detailsModalTitle">Detalhes da O.S.</h3>
+                        <p class="text-sm text-gray-500" id="detailsModalSubtitle"></p>
+                    </div>
+                    <button class="btn-cancel text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
+            </div>
+            <div class="p-6 flex-grow overflow-y-auto">
+                <div id="timeline-container">
+                    <h4 class="font-bold mb-4">Linha do Tempo</h4>
+                    <div id="timeline-list" class="space-y-8 border-l-2 border-gray-200 ml-2"></div>
+                </div>
+                <hr class="my-6">
+                <div>
+                    <h4 class="font-bold mb-4">Adicionar Evento</h4>
+                    <form id="timelineForm">
+                        <input type="hidden" id="timelineOrderId">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="timelineType" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                                <select id="timelineType" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    <option value="procedure">Procedimento</option>
+                                    <option value="part">Peça Utilizada</option>
+                                </select>
+                            </div>
+                            <div id="timeline-description-container">
+                                <label for="timelineDescription" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                                <input type="text" id="timelineDescription" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div id="timeline-part-container" class="hidden">
+                                <label for="timelinePart" class="block text-sm font-medium text-gray-700 mb-1">Peça</label>
+                                <select id="timelinePart" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                            <div>
+                                <label for="timelineCost" class="block text-sm font-medium text-gray-700 mb-1">Custo (R$)</label>
+                                <input type="number" id="timelineCost" step="0.01" min="0" placeholder="0.00" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="timelineImage" class="block text-sm font-medium text-gray-700 mb-1">Anexar Imagem</label>
+                                <input type="file" id="timelineImage" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                            </div>
+                        </div>
+                        <div class="text-right mt-4">
+                            <button type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700">Adicionar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="p-6 bg-gray-50 border-t rounded-b-lg">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">Custo Total da O.S.:</span>
+                    <span class="font-bold text-xl text-red-600" id="totalCost">R$ 0,00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="confirmClearModal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-sm m-4">
+            <h3 class="text-xl font-bold mb-4">Confirmar Ação</h3>
+            <p class="text-gray-600 mb-6">Tem certeza de que deseja apagar todos os dados? Esta ação não pode ser desfeita.</p>
+            <div class="flex justify-end space-x-4">
+                <button type="button" class="btn-cancel bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+                <button type="button" id="confirmClearBtn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700">Apagar Tudo</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- CHAVES DO LOCALSTORAGE ---
+        const PRINTERS_KEY = 'maintenanceApp.printers';
+        const ORDERS_KEY = 'maintenanceApp.orders';
+        const PARTS_KEY = 'maintenanceApp.parts';
+        const INSTALLED_PARTS_KEY = 'maintenanceApp.installedParts';
+
+        // --- BANCO DE DADOS EM MEMÓRIA ---
+        let printers = [];
+        let maintenanceOrders = [];
+        let inventoryParts = [];
+        let installedParts = [];
+
+        // --- ELEMENTOS DO DOM ---
+        const modals = document.querySelectorAll('.modal-backdrop');
+        const addPrinterBtn = document.getElementById('addPrinterBtn');
+        const addMaintenanceBtn = document.getElementById('addMaintenanceBtn');
+        const addPartBtn = document.getElementById('addPartBtn');
+        const clearDataBtn = document.getElementById('clearDataBtn');
+        
+        // --- FUNÇÕES DE PERSISTÊNCIA ---
+        function saveData() {
+            localStorage.setItem(PRINTERS_KEY, JSON.stringify(printers));
+            localStorage.setItem(ORDERS_KEY, JSON.stringify(maintenanceOrders));
+            localStorage.setItem(PARTS_KEY, JSON.stringify(inventoryParts));
+            localStorage.setItem(INSTALLED_PARTS_KEY, JSON.stringify(installedParts));
+        }
+
+        function loadData() {
+            printers = JSON.parse(localStorage.getItem(PRINTERS_KEY) || '[]');
+            maintenanceOrders = JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]');
+            inventoryParts = JSON.parse(localStorage.getItem(PARTS_KEY) || '[]');
+            installedParts = JSON.parse(localStorage.getItem(INSTALLED_PARTS_KEY) || '[]');
+        }
+
+        // --- FUNÇÕES DE RENDERIZAÇÃO ---
+        function renderAll() {
+            renderDashboard();
+            renderPrinters();
+            renderMaintenanceOrders();
+            renderParts();
+        }
+    
+        function renderDashboard() {
+            const lifespanContainer = document.getElementById('lifespan-dashboard');
+            const preventiveContainer = document.getElementById('preventive-dashboard');
+            lifespanContainer.innerHTML = '';
+            preventiveContainer.innerHTML = '';
+
+            let preventiveItems = [];
+
+            installedParts.forEach(installed => {
+                const printer = printers.find(p => p.id === installed.printerId);
+                if (!printer) return;
+
+                const pagesSinceInstall = printer.pageCount - installed.installationPageCount;
+                const pagesRemaining = installed.lifespanPages - pagesSinceInstall;
+                const percentageRemaining = Math.max(0, (pagesRemaining / installed.lifespanPages) * 100);
+
+                let progressBarColor = 'bg-green-500';
+                if (percentageRemaining < 50) progressBarColor = 'bg-yellow-500';
+                if (percentageRemaining < 20) progressBarColor = 'bg-red-500';
+                
+                lifespanContainer.innerHTML += `<div><div class="flex justify-between items-center text-sm mb-1"><span class="font-bold">${printer.brand} ${printer.model}</span><span class="text-gray-500">${installed.description}</span></div><div class="progress-bar h-5"><div class="progress-bar-inner ${progressBarColor}" style="width: ${percentageRemaining}%;">${Math.round(percentageRemaining)}%</div></div><p class="text-xs text-right mt-1 text-gray-500">${pagesRemaining > 0 ? `Restam ~${Math.round(pagesRemaining).toLocaleString('pt-BR')} pgs` : 'Vida útil encerrada'}</p></div>`;
+
+                if (percentageRemaining <= 20) {
+                    const partInStock = inventoryParts.find(p => p.id === installed.partId);
+                    preventiveItems.push({ printerName: `${printer.brand} ${printer.model}`, partDescription: installed.description, pagesRemaining: pagesRemaining, stockQty: partInStock ? partInStock.quantity : 0 });
+                }
+            });
+
+            if (lifespanContainer.innerHTML === '') lifespanContainer.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhuma peça com vida útil definida foi instalada.</p>`;
+
+            if (preventiveItems.length > 0) {
+                preventiveItems.sort((a, b) => a.pagesRemaining - b.pagesRemaining).forEach(item => {
+                    const stockClass = item.stockQty > 0 ? 'text-green-600' : 'text-red-600';
+                    preventiveContainer.innerHTML += `<div class="bg-gray-50 p-3 rounded-lg border-l-4 ${item.pagesRemaining <= 0 ? 'border-red-500' : 'border-yellow-400'}"><div class="flex justify-between items-center"><div><p class="font-bold">${item.printerName}</p><p class="text-sm text-gray-600">${item.partDescription}</p></div><div class="text-right"><p class="font-bold text-red-500">~${Math.round(item.pagesRemaining).toLocaleString('pt-BR')} pgs</p><p class="text-xs ${stockClass}">Estoque: ${item.stockQty}</p></div></div></div>`;
+                });
+            } else {
+                preventiveContainer.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhuma manutenção preventiva necessária.</p>`;
+            }
+        }
+
+        function renderPrinters() {
+            const grid = document.getElementById('printersGrid');
+            grid.innerHTML = '';
+            if (printers.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 bg-white rounded-lg shadow"><i class="fas fa-box-open text-4xl text-gray-400 mb-4"></i><p class="text-gray-500">Nenhuma impressora cadastrada.</p></div>`;
+                addMaintenanceBtn.disabled = true;
+            } else {
+                addMaintenanceBtn.disabled = false;
+                printers.forEach(printer => {
+                    const statusClass = printer.status === 'Ativa' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                    grid.innerHTML += `<div class="bg-white rounded-lg shadow p-5 flex flex-col justify-between"><div><div class="flex justify-between items-start"><h3 class="font-bold text-lg">${printer.brand} ${printer.model}</h3><span class="text-xs font-semibold px-2 py-1 rounded-full ${statusClass}">${printer.status}</span></div><p class="text-sm text-gray-600 mt-2">S/N: ${printer.serial || 'N/A'}</p><p class="text-sm text-gray-500"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>${printer.location}</p></div><div class="mt-4 pt-4 border-t"><div class="flex justify-between items-center mb-2"><span class="text-sm text-gray-500">Contador: <strong class="text-gray-800">${(printer.pageCount || 0).toLocaleString('pt-BR')}</strong></span><button onclick="window.app.openUpdatePageCountModal('${printer.id}')" class="text-blue-500 hover:text-blue-700" title="Atualizar Contador"><i class="fas fa-sync-alt"></i></button></div><div class="text-right space-x-3"><button onclick="window.app.openManagePartsModal('${printer.id}')" class="text-gray-500 hover:text-green-600" title="Gerenciar Peças Instaladas"><i class="fas fa-cogs"></i></button><button onclick="window.app.openEditPrinterModal('${printer.id}')" class="text-gray-500 hover:text-blue-600" title="Editar Impressora"><i class="fas fa-edit"></i></button><button onclick="window.app.deletePrinter('${printer.id}')" class="text-gray-500 hover:text-red-600" title="Excluir Impressora"><i class="fas fa-trash-alt"></i></button></div></div></div>`;
+                });
+            }
+        }
+
+        function renderMaintenanceOrders() {
+            const tbody = document.getElementById('maintenanceTableBody');
+            tbody.innerHTML = '';
+            if (maintenanceOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-gray-500"><i class="fas fa-file-circle-xmark text-4xl text-gray-400 mb-4"></i><p>Nenhuma ordem de serviço registrada.</p></td></tr>`;
+            } else {
+                maintenanceOrders.forEach(order => {
+                    const printer = printers.find(p => p.id === order.printerId);
+                    const printerName = printer ? `${printer.brand} ${printer.model}` : 'Não encontrada';
+                    const statusBadge = { 'Aberta': 'bg-red-100 text-red-800', 'Em Andamento': 'bg-blue-100 text-blue-800', 'Concluída': 'bg-green-100 text-green-800' }[order.status];
+                    tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-4 px-4 text-sm font-medium text-gray-900">${printerName}</td><td class="py-4 px-4 text-sm text-gray-500 max-w-xs truncate" title="${order.problem}">${order.problem}</td><td class="py-4 px-4 text-sm text-gray-500">${order.technician}</td><td class="py-4 px-4 text-center"><span class="text-xs font-semibold px-2 py-1 rounded-full ${statusBadge}">${order.status}</span></td><td class="py-4 px-4 text-center text-sm font-medium space-x-2"><button title="Detalhes" onclick="window.app.openDetailsModal('${order.id}')" class="text-indigo-600 hover:text-indigo-900"><i class="fas fa-list-alt"></i></button>${order.status !== 'Concluída' ? `<button title="Em Andamento" onclick="window.app.updateOrderStatus('${order.id}', 'Em Andamento')" class="text-blue-600"><i class="fas fa-person-digging"></i></button><button title="Concluída" onclick="window.app.updateOrderStatus('${order.id}', 'Concluída')" class="text-green-600"><i class="fas fa-check-circle"></i></button>` : `<span class="text-gray-400" title="Concluída"><i class="fas fa-lock"></i></span>`}<button title="Apagar O.S." onclick="window.app.deleteOrder('${order.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash-alt"></i></button></td></tr>`;
+                });
+            }
+        }
+
+        function renderParts() {
+            const tbody = document.getElementById('partsTableBody');
+            tbody.innerHTML = '';
+            if (inventoryParts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-gray-500"><i class="fas fa-boxes-stacked text-4xl text-gray-400 mb-4"></i><p>Nenhuma peça cadastrada no estoque.</p></td></tr>`;
+            } else {
+                inventoryParts.forEach(part => {
+                    const lowStockClass = part.quantity <= 3 ? 'bg-yellow-100 text-yellow-800 font-bold' : '';
+                    tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-4 px-4 text-sm font-medium text-gray-900">${part.description}</td><td class="py-4 px-4 text-sm text-gray-500 text-right">R$ ${part.cost.toFixed(2).replace('.', ',')}</td><td class="py-4 px-4 text-sm text-gray-500 text-center"><span class="px-2 py-1 rounded-full ${lowStockClass}">${part.quantity}</span></td><td class="py-4 px-4 text-sm text-gray-500 text-center">${(part.lifespanPages || 0).toLocaleString('pt-BR')}</td><td class="py-4 px-4 text-center text-sm font-medium space-x-3"><button onclick="window.app.openEditPartModal('${part.id}')" class="text-gray-500 hover:text-blue-600" title="Editar Peça"><i class="fas fa-edit"></i></button><button onclick="window.app.deletePart('${part.id}')" class="text-gray-500 hover:text-red-600" title="Excluir Peça"><i class="fas fa-trash-alt"></i></button></td></tr>`;
+                });
+            }
+        }
+
+        function renderTimeline(order) {
+            const list = document.getElementById('timeline-list');
+            const totalCostEl = document.getElementById('totalCost');
+            list.innerHTML = '';
+            let totalCost = 0;
+
+            const sortedTimeline = order.timeline ? [...order.timeline] : [];
+            sortedTimeline.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(entry => {
+                totalCost += entry.cost;
+                const isPart = entry.type === 'part';
+                const color = isPart ? 'bg-orange-500' : 'bg-blue-500';
+                list.innerHTML += `<div class="relative"><div class="absolute -left-3.5 mt-1.5 w-5 h-5 ${color} rounded-full border-4 border-white"></div><div class="ml-8"><div class="flex justify-between items-center flex-wrap"><span class="font-bold text-gray-800">${isPart ? 'Peça Utilizada' : 'Procedimento'}</span><span class="text-xs text-gray-500">${new Date(entry.date).toLocaleString('pt-BR')}</span></div><p class="text-gray-600 mt-1">${entry.description}</p>${entry.cost > 0 ? `<p class="text-sm font-semibold text-red-500 mt-1">Custo: R$ ${entry.cost.toFixed(2).replace('.', ',')}</p>` : ''}${entry.imageUrl ? `<a href="${entry.imageUrl}" target="_blank" class="mt-2 inline-block"><img src="${entry.imageUrl}" alt="Anexo" class="max-h-24 rounded-lg border-2 hover:border-indigo-500"></a>` : ''}</div></div>`;
+            });
+            totalCostEl.textContent = `R$ ${totalCost.toFixed(2).replace('.', ',')}`;
+        }
+        
+        function renderManagedParts(printerId) {
+            const container = document.getElementById('currentManagedParts');
+            container.innerHTML = '';
+            const partsForPrinter = installedParts.filter(p => p.printerId === printerId);
+
+            if (partsForPrinter.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500 py-2">Nenhuma peça em uso registrada para esta impressora.</p>`;
+            } else {
+                partsForPrinter.forEach(part => {
+                    container.innerHTML += `
+                        <div class="bg-gray-100 p-3 rounded-lg flex justify-between items-center">
+                            <span>${part.description}</span>
+                            <button type="button" onclick="window.app.removeInstalledPart('${part.id}')" class="text-red-500 hover:text-red-700" title="Remover Peça"><i class="fas fa-times-circle"></i></button>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // --- LÓGICA DE NEGÓCIO ---
+        function handlePrinterForm(e) {
+            e.preventDefault();
+            const id = e.target.printerId.value;
+            const printerData = {
+                brand: e.target.printerBrand.value,
+                model: e.target.printerModel.value,
+                serial: e.target.printerSerial.value,
+                location: e.target.printerLocation.value,
+                pageCount: parseInt(e.target.printerPageCount.value) || 0,
+            };
+
+            if (id) { // Edit
+                const printer = printers.find(p => p.id === id);
+                Object.assign(printer, printerData);
+            } else { // Create
+                printers.push({
+                    id: 'IMP' + Date.now(),
+                    status: 'Ativa',
+                    ...printerData
+                });
+            }
+            saveData();
+            closeModal(e.target.closest('.modal-backdrop'));
+            renderAll();
+        }
+
+        function handlePartForm(e) {
+            e.preventDefault();
+            const id = e.target.partId.value;
+            const partData = {
+                code: e.target.partCode.value,
+                description: e.target.partDescription.value,
+                cost: parseFloat(e.target.partCost.value) || 0,
+                quantity: parseInt(e.target.partQuantity.value) || 0,
+                lifespanPages: parseInt(e.target.partLifespanPages.value) || 0
+            };
+
+            if (id) { // Edit
+                const part = inventoryParts.find(p => p.id === id);
+                Object.assign(part, partData);
+            } else { // Create
+                inventoryParts.push({
+                    id: 'PART' + Date.now(),
+                    ...partData
+                });
+            }
+            saveData();
+            closeModal(e.target.closest('.modal-backdrop'));
+            renderAll();
+        }
+
+        function addMaintenanceOrder(e) {
+            e.preventDefault();
+            const problem = e.target.maintenanceProblem.value;
+            const newOrder = {
+                id: 'OS' + Date.now(),
+                printerId: e.target.maintenancePrinter.value,
+                problem: problem,
+                technician: e.target.maintenanceTechnician.value,
+                status: 'Aberta',
+                timeline: [{ date: new Date().toISOString(), description: `Abertura da O.S: ${problem}`, type: 'procedure', cost: 0, imageUrl: null }]
+            };
+            maintenanceOrders.push(newOrder);
+            const printer = printers.find(p => p.id === newOrder.printerId);
+            if(printer) printer.status = 'Em Manutenção';
+            saveData();
+            closeModal(e.target.closest('.modal-backdrop'));
+            renderAll();
+        }
+    
+        function updateOrderStatus(orderId, newStatus) {
+            const order = maintenanceOrders.find(o => o.id === orderId);
+            if (!order) return;
+            order.status = newStatus;
+            order.timeline.push({ date: new Date().toISOString(), description: `Status alterado para: ${newStatus}`, type: 'procedure', cost: 0, imageUrl: null });
+            
+            const printer = printers.find(p => p.id === order.printerId);
+            if (printer) {
+                const hasOpenOrders = maintenanceOrders.some(o => o.printerId === printer.id && o.status !== 'Concluída');
+                printer.status = hasOpenOrders ? 'Em Manutenção' : 'Ativa';
+            }
+            saveData();
+            renderAll();
+        };
+
+        const readFileAsBase64 = file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        async function addTimelineEntry(e) {
+            e.preventDefault();
+            const orderId = e.target.timelineOrderId.value;
+            const order = maintenanceOrders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const type = e.target.timelineType.value;
+            const imageFile = e.target.timelineImage.files[0];
+            let imageUrl = null;
+            if (imageFile) imageUrl = await readFileAsBase64(imageFile);
+
+            let description = '';
+            let cost = parseFloat(e.target.timelineCost.value) || 0;
+
+            if (type === 'part') {
+                const partId = e.target.timelinePart.value;
+                const inventoryPart = inventoryParts.find(p => p.id === partId);
+                const printer = printers.find(p => p.id === order.printerId);
+                if (!inventoryPart || inventoryPart.quantity <= 0 || !printer) {
+                    alert('Peça não encontrada, sem estoque ou impressora inválida!');
+                    return;
+                }
+                inventoryPart.quantity--;
+                description = `[${inventoryPart.code || ''}] ${inventoryPart.description}`;
+                cost = inventoryPart.cost;
+
+                // Remove a peça antiga do mesmo tipo, se houver
+                installedParts = installedParts.filter(p => !(p.printerId === printer.id && p.description === inventoryPart.description));
+                
+                // Adiciona a nova peça instalada
+                installedParts.push({
+                    id: 'INST' + Date.now(),
+                    partId: inventoryPart.id,
+                    printerId: printer.id,
+                    description: inventoryPart.description,
+                    installationPageCount: printer.pageCount,
+                    lifespanPages: inventoryPart.lifespanPages,
+                });
+
+            } else {
+                description = e.target.timelineDescription.value;
+            }
+
+            order.timeline.push({ date: new Date().toISOString(), description, type, cost, imageUrl });
+            saveData();
+            e.target.reset();
+            handleTimelineTypeChange();
+            renderAll();
+        }
+        
+        function deletePrinter(id) {
+            if (maintenanceOrders.some(o => o.printerId === id)) {
+                alert('Não é possível excluir uma impressora que possui ordens de serviço associadas.');
+                return;
+            }
+            if (confirm('Tem certeza que deseja excluir esta impressora? Esta ação não pode ser desfeita.')) {
+                printers = printers.filter(p => p.id !== id);
+                installedParts = installedParts.filter(p => p.printerId !== id);
+                saveData();
+                renderAll();
+            }
+        };
+
+        function deletePart(id) {
+            if (installedParts.some(p => p.partId === id)) {
+                alert('Não é possível excluir uma peça que já foi instalada em uma impressora.');
+                return;
+            }
+            if (confirm('Tem certeza que deseja excluir esta peça do estoque?')) {
+                inventoryParts = inventoryParts.filter(p => p.id !== id);
+                saveData();
+                renderAll();
+            }
+        };
+        
+        function deleteOrder(id) {
+            if (confirm('Tem certeza que deseja excluir esta Ordem de Serviço?')) {
+                maintenanceOrders = maintenanceOrders.filter(o => o.id !== id);
+                saveData();
+                renderAll();
+            }
+        }
+
+        function handleManualPartInstall(e) {
+            e.preventDefault();
+            const printerId = e.target.manualInstallPrinterId.value;
+            const partId = e.target.manualInstallPart.value;
+            const installationPageCount = parseInt(e.target.manualInstallPageCount.value);
+
+            const inventoryPart = inventoryParts.find(p => p.id === partId);
+            const printer = printers.find(p => p.id === printerId);
+
+            if (!inventoryPart || !printer) {
+                alert('Peça ou impressora inválida.');
+                return;
+            }
+            if (installationPageCount > printer.pageCount) {
+                alert('O contador na instalação não pode ser maior que o contador atual da impressora.');
+                return;
+            }
+
+            // Remove a peça antiga do mesmo tipo, se houver
+            installedParts = installedParts.filter(p => !(p.printerId === printer.id && p.description === inventoryPart.description));
+            
+            // Adiciona a nova peça instalada
+            installedParts.push({
+                id: 'INST' + Date.now(),
+                partId: inventoryPart.id,
+                printerId: printer.id,
+                description: inventoryPart.description,
+                installationPageCount: installationPageCount,
+                lifespanPages: inventoryPart.lifespanPages,
+            });
+
+            saveData();
+            renderAll();
+            renderManagedParts(printerId); // Re-renderiza a lista no modal
+            e.target.reset();
+        }
+
+        function removeInstalledPart(installedPartId) {
+            const partToRemove = installedParts.find(p => p.id === installedPartId);
+            if (partToRemove && confirm(`Tem certeza que deseja remover a peça "${partToRemove.description}" desta impressora?`)) {
+                const printerId = partToRemove.printerId;
+                installedParts = installedParts.filter(p => p.id !== installedPartId);
+                saveData();
+                renderAll();
+                renderManagedParts(printerId);
+            }
+        }
+
+        // --- CONTROLE DOS MODAIS E UI ---
+        function openModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
+        function closeModal(modal) { modal.classList.add('hidden'); }
+
+        addPrinterBtn.addEventListener('click', () => {
+            const form = document.getElementById('printerForm');
+            form.reset();
+            form.printerId.value = '';
+            document.getElementById('printerModalTitle').textContent = 'Cadastrar Nova Impressora';
+            openModal('printerModal');
+        });
+
+        addPartBtn.addEventListener('click', () => {
+            const form = document.getElementById('partForm');
+            form.reset();
+            form.partId.value = '';
+            document.getElementById('partModalTitle').textContent = 'Cadastrar Nova Peça';
+            openModal('partModal');
+        });
+        
+        addMaintenanceBtn.addEventListener('click', () => {
+            const select = document.getElementById('maintenancePrinter');
+            select.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+            printers.filter(p => p.status === 'Ativa').forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.brand} ${p.model}</option>`;
+            });
+            document.getElementById('maintenanceForm').reset();
+            openModal('maintenanceModal');
+        });
+
+        clearDataBtn.addEventListener('click', () => {
+             if (confirm('Tem certeza que deseja apagar TODOS os dados salvos neste navegador? Esta ação é irreversível!')) {
+                localStorage.clear();
+                loadData();
+                renderAll();
+             }
+        });
+
+        modals.forEach(modal => {
+            modal.addEventListener('click', e => {
+                if (e.target === modal || e.target.closest('.btn-cancel')) {
+                    closeModal(modal);
+                }
+            });
+        });
+
+        window.app = {
+            openEditPrinterModal: (id) => {
+                const printer = printers.find(p => p.id === id);
+                if (!printer) return;
+                const form = document.getElementById('printerForm');
+                form.printerId.value = printer.id;
+                form.printerBrand.value = printer.brand;
+                form.printerModel.value = printer.model;
+                form.printerSerial.value = printer.serial;
+                form.printerLocation.value = printer.location;
+                form.printerPageCount.value = printer.pageCount;
+                document.getElementById('printerModalTitle').textContent = 'Editar Impressora';
+                openModal('printerModal');
+            },
+            openEditPartModal: (id) => {
+                const part = inventoryParts.find(p => p.id === id);
+                if (!part) return;
+                const form = document.getElementById('partForm');
+                form.partId.value = part.id;
+                form.partCode.value = part.code;
+                form.partDescription.value = part.description;
+                form.partCost.value = part.cost;
+                form.partQuantity.value = part.quantity;
+                form.partLifespanPages.value = part.lifespanPages;
+                document.getElementById('partModalTitle').textContent = 'Editar Peça';
+                openModal('partModal');
+            },
+            openManagePartsModal: (printerId) => {
+                const printer = printers.find(p => p.id === printerId);
+                if (!printer) return;
+                document.getElementById('managePartsPrinterName').textContent = `${printer.brand} ${printer.model}`;
+                document.getElementById('manualInstallPrinterId').value = printerId;
+                
+                const select = document.getElementById('manualInstallPart');
+                select.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+                inventoryParts.forEach(p => {
+                    select.innerHTML += `<option value="${p.id}">${p.description}</option>`;
+                });
+
+                renderManagedParts(printerId);
+                openModal('managePartsModal');
+            },
+            removeInstalledPart,
+            deletePrinter, deletePart, deleteOrder, updateOrderStatus,
+            openDetailsModal: (orderId) => {
+                const order = maintenanceOrders.find(o => o.id === orderId);
+                const printer = printers.find(p => p.id === order.printerId);
+                if (!order || !printer) return;
+                
+                document.getElementById('detailsModalTitle').textContent = `Detalhes da O.S. #${order.id.substring(2,8)}`;
+                document.getElementById('detailsModalSubtitle').textContent = `${printer.brand} ${printer.model} | Técnico: ${order.technician}`;
+                document.getElementById('timelineOrderId').value = orderId;
+                
+                const timelinePartSelect = document.getElementById('timelinePart');
+                timelinePartSelect.innerHTML = '<option value="" disabled selected>Selecione a peça...</option>';
+                inventoryParts.filter(p => p.quantity > 0).forEach(p => {
+                    timelinePartSelect.innerHTML += `<option value="${p.id}">[${p.quantity}] ${p.description}</option>`;
+                });
+
+                renderTimeline(order);
+                handleTimelineTypeChange();
+                openModal('detailsModal');
+            },
+            openUpdatePageCountModal: (printerId) => {
+                const printer = printers.find(p => p.id === printerId);
+                if (!printer) return;
+                document.getElementById('updatePageCountPrinterId').value = printerId;
+                document.getElementById('updatePageCountInfo').textContent = `Contador atual de ${printer.brand} ${printer.model}: ${printer.pageCount.toLocaleString('pt-BR')}`;
+                document.getElementById('newPageCount').value = printer.pageCount;
+                document.getElementById('newPageCount').min = printer.pageCount;
+                openModal('updatePageCountModal');
+            }
+        };
+
+        const timelineTypeSelect = document.getElementById('timelineType');
+        const timelineDescContainer = document.getElementById('timeline-description-container');
+        const timelinePartContainer = document.getElementById('timeline-part-container');
+        const timelineCostInput = document.getElementById('timelineCost');
+
+        function handleTimelineTypeChange() {
+            if (timelineTypeSelect.value === 'part') {
+                timelineDescContainer.classList.add('hidden');
+                timelinePartContainer.classList.remove('hidden');
+                timelineCostInput.readOnly = true;
+                timelineCostInput.value = '';
+            } else {
+                timelineDescContainer.classList.remove('hidden');
+                timelinePartContainer.classList.add('hidden');
+                timelineCostInput.readOnly = false;
+                timelineCostInput.value = '';
+            }
+        }
+        timelineTypeSelect.addEventListener('change', handleTimelineTypeChange);
+        
+        document.getElementById('timelinePart').addEventListener('change', (e) => {
+            const partId = e.target.value;
+            const part = inventoryParts.find(p => p.id === partId);
+if (part) {
+                timelineCostInput.value = part.cost.toFixed(2);
+            }
+        });
+
+        // --- INICIALIZAÇÃO DOS FORMULÁRIOS ---
+        document.getElementById('timelineForm').addEventListener('submit', addTimelineEntry);
+        document.getElementById('printerForm').addEventListener('submit', handlePrinterForm);
+        document.getElementById('partForm').addEventListener('submit', handlePartForm);
+        document.getElementById('maintenanceForm').addEventListener('submit', addMaintenanceOrder);
+        document.getElementById('manualInstallForm').addEventListener('submit', handleManualPartInstall);
+        document.getElementById('updatePageCountForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const printerId = e.target.updatePageCountPrinterId.value;
+            const newPageCount = parseInt(e.target.newPageCount.value) || 0;
+            const printer = printers.find(p => p.id === printerId);
+            if (printer) {
+                printer.pageCount = newPageCount;
+                saveData();
+                renderAll();
+                closeModal(document.getElementById('updatePageCountModal'));
+            }
+        });
+        
+        loadData();
+        renderAll();
+    });
+    </script>
+</body>
+</html>
